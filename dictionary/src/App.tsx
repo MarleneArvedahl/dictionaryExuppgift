@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import './App.css';
+import bookPicture from './assets/book-2-svgrepo-com.svg';
 
 type Definition = {
     word: string;
@@ -23,12 +24,20 @@ type DefinitionDetail = {
 function App() {
     const [word, setWord] = useState('');
     const [definition, setDefinition] = useState<Definition[] | null>(null);
+    const [errorMessage, setErrorMessage] = useState('');
 
-    const handleSearch = async () => {
+    //när man trycker på knappen kollar den ifall det är tomt i inputfältet och i så fall skickas det ut ett felmeddelande.
+    const handleSearch = async (e: React.FormEvent) => {
+        e.preventDefault();
         if (!word.trim()) {
+            setErrorMessage(
+                'Du har inte fyllt i något ord ännu, var snäll och gör det'
+            );
+            setWord('');
+            setDefinition(null);
             return;
         }
-
+        setErrorMessage('');
         try {
             const response = await fetch(
                 `https://api.dictionaryapi.dev/api/v2/entries/en/${word}`
@@ -39,7 +48,11 @@ function App() {
             const data = await response.json();
             setDefinition(data);
         } catch (Error) {
-            console.log('något gick fel');
+            setErrorMessage(
+                'Ditt ord gav tyvärr ingen träff, var god fyll i ett annat'
+            );
+            setWord('');
+            setDefinition(null);
         }
     };
 
@@ -49,13 +62,9 @@ function App() {
                 <h1>
                     Your <span>Dictionary</span>
                 </h1>
-                <img
-                    className='book'
-                    src='./assets/book-2-svgrepo-com.svg'
-                    alt=''
-                />
+                <img className='book' src={bookPicture} alt='' />
             </header>
-            <form className='form__Wrapper' action=''>
+            <form className='form__Wrapper' action='' onSubmit={handleSearch}>
                 <input
                     type='text'
                     value={word}
@@ -69,45 +78,67 @@ function App() {
                 Slå upp ord
             </button>
 
+            {/* Visa felmeddelandet om det finns ett */}
+            {errorMessage && (
+                <p style={{ color: 'red', fontStyle: 'italic' }}>
+                    {errorMessage}
+                </p>
+            )}
             {definition && (
                 <article className='definition'>
-                        {definition.map((filteredWord, index) => (
-                          <main key={`${filteredWord.word}-${filteredWord.meanings}-${index}`}>
-                              <h2>Du sökte på: {filteredWord.word}</h2>
-                                {/* Spela upp ljudklippet om det finns */}
-                                {filteredWord.phonetics.length > 0 &&
-                                    filteredWord.phonetics[0].audio && (
-                                        <section className='audio'>
-                                            <p>Lyssna på uttal</p>
-                                            <audio controls>
-                                                <source
-                                                    src={
-                                                        filteredWord
-                                                            .phonetics[0].audio
+                    <section className='h2AndAudio'>
+                        <h2 className='searchedWord'>
+                            Du sökte på:{' '}
+                            <span className='choosenWord'>
+                                "{definition[0].word}"
+                            </span>
+                        </h2>
+                        {/* Spela upp ljudklippet om det finns */}
+                        {definition[0].phonetics.length > 0 &&
+                        definition[0].phonetics[0].audio ? (
+                            <section className='audio'>
+                                <audio
+                                    key={definition[0].phonetics[0].audio}
+                                    controls
+                                >
+                                    <source
+                                        src={definition[0].phonetics[0].audio}
+                                        type='audio/mpeg'
+                                    />
+                                    'Inget ljud finns att spela upp'
+                                </audio>
+                                <h2>Lyssna på uttal</h2>
+                            </section>
+                        ) : (
+                            // Visa meddelande om det inte finns ett ljudspår
+                            <p style={{ color: 'red', fontStyle: 'italic' }}>
+                                Det finns inget ljudspår att spela upp.
+                            </p>
+                        )}
+                    </section>
+                    {definition.map((filteredWord, index) => (
+                        <main
+                            key={`${filteredWord.word}-${filteredWord.meanings}-${index}`}
+                        >
+                            {filteredWord.meanings.length > 0 && (
+                                <section className='allDescription'>
+                                    <h3 className='descriptionText'>
+                                        {
+                                            <ul>
+                                                <li>
+                                                    {
+                                                        filteredWord.meanings[0]
+                                                            .definitions[0]
+                                                            .definition
                                                     }
-                                                    type='audio/mpeg'
-                                                />
-                                                Your browser does not support
-                                                the audio element.
-                                            </audio>
-                                        </section>
-                                    )}
-                                {filteredWord.meanings.map((meaning, index) => (
-                                    <section className='allDescription' key={index}>
-                                        <h3>{meaning.partOfSpeech}</h3>
-                                        <ul>
-                                            {meaning.definitions.map(
-                                                (def, i) => (
-                                                    <li key={i}>
-                                                        {def.definition}
-                                                    </li>
-                                                )
-                                            )}
-                                        </ul>
-                                    </section>
-                                ))}
-                            </main>
-                        ))}
+                                                </li>
+                                            </ul>
+                                        }
+                                    </h3>
+                                </section>
+                            )}
+                        </main>
+                    ))}
                 </article>
             )}
         </div>
@@ -115,5 +146,3 @@ function App() {
 }
 
 export default App;
-
-
